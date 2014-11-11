@@ -147,7 +147,7 @@ cat << EOF
 EOF
      
 
-for i in ` mount | grep "^/" | awk '{print $1}'`; do
+for i in ` mount | grep "^/" | awk '{print $3}'`; do
 
 echo "<div class="bs-component" align="center"><h6 id="progress-stacked"><p class="text-warning"> `df -h $i  | awk '{print $1}' | awk 'NR==2'` mounted on `df -h $i  | awk '{print $6}' | awk 'NR==2'` </p></h6>"
 echo "<div class="progress">"
