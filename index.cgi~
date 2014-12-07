@@ -1,6 +1,7 @@
 #!/bin/bash
 echo "Content-type: text/html"
 
+
 used=`free -m | awk 'NR==3' | awk '{ printf $3}'`
 total=`free -m | awk 'NR==2' | awk '{ printf $2}'`
 all=`echo "$used*100/$total" | bc`
