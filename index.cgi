@@ -1,11 +1,15 @@
 #!/bin/bash
 echo "Content-type: text/html"
 
-bper=`/bin/cat 2>/dev/null /var/log/apache2/access.log | /bin/grep -v "(internal dummy connection)" 2>/dev/null | head -1 | /usr/bin/awk '{print $4}' | /usr/bin/cut -d"[" -f2 2>/dev/null | /usr/bin/cut -d: -f1 2>/dev/null | sed 's/\//./g' 2>/dev/null`
-fper=`/bin/cat 2>/dev/null /var/log/apache2/access.log | /bin/grep -v "(internal dummy connection)" 2>/dev/null | tail -1 | /usr/bin/awk '{print $4}' | /usr/bin/cut -d"[" -f2 2>/dev/null | /usr/bin/cut -d: -f1 2>/dev/null | sed 's/\//./g' 2>/dev/null`
-uniq=`cat /var/log/apache2/access.log | /usr/bin/awk '{print $1}'| sort | uniq -c |wc -l`
-eth0_rx=`/sbin/ifconfig | grep "RX bytes" | head -1 | /usr/bin/awk '{print $3, $4}'| cut -d"(" -f2 | cut -d")" -f1`
-eth0_tx=`/sbin/ifconfig | grep "RX bytes" | head -1 | /usr/bin/awk '{print $7, $8}'| cut -d"(" -f2 | cut -d")" -f1`
+
+used=`free -m | awk 'NR==3' | awk '{ printf $3}'`
+total=`free -m | awk 'NR==2' | awk '{ printf $2}'`
+all=`echo "$used*100/$total" | bc`
+
+used1=`free -m | awk 'NR==3' | awk '{ printf $4}'`
+total1=`free -m | awk 'NR==2' | awk '{ printf $2}'`
+all1=`echo "$used1*100/$total1" | bc`
+
 
 
 cat << EOF
@@ -14,26 +18,14 @@ cat << EOF
 <html lang="en">
   <head>
     <meta charset="utf-8">
+	<meta http-equiv="refresh" content="30" />
     <title>System Info for `hostname -f` </title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="css/style.css">
-    <script>
 
-     var _gaq = _gaq || [];
-      _gaq.push(['_setAccount', 'UA-23019901-1']);
-      _gaq.push(['_setDomainName', "bootswatch.com"]);
-        _gaq.push(['_setAllowLinker', true]);
-      _gaq.push(['_trackPageview']);
 
-     (function() {
-       var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-       ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-       var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-     })();
-
-    </script>
 	
-  </head>
+</head>
   <body>
     <div class="navbar navbar-default navbar-fixed-top">
       <div class="container">
@@ -52,11 +44,8 @@ cat << EOF
           </ul>
 
           <ul class="nav navbar-nav navbar-right">
-
-            <li><a href="./" target="_blank">Sysinfo</a></li>
-    
+            <li><a href="https://github.com/caezsar/sysinfo" target="_blank">GitHub</a></li>    
           </ul>
-
         </div>
       </div>
     </div>
@@ -70,84 +59,111 @@ cat << EOF
 
         <div class="row">
           <div class="col-lg-12">
-            <h3>System Info generated on `date` </h3>
-            <div class="bs-component">
-              <div class="alert alert-dismissable alert-warning">       
-                <h4> `cat /etc/issue.net` </h4> 
-                <p> `uname -a` with `nproc`  cores</p>
-				`cat /proc/cmdline`
-              </div>
-            </div>
+            <h3>System Info generated on `date` </h3> 
           </div>
         </div>
 		
-        <div class="row">
-          <div class="col-lg-4">
-            <div class="bs-component">
-              <div class="alert alert-dismissable alert-warning">             
-				<p> Uptime: <strong> `uptime | cut -d"p" -f2|cut -d"," -f1` </strong></p>
-				<p> Reboot: <strong> `who -b` </p></strong>
-				<p> Runlevel : <strong> `/sbin/runlevel` </strong></p>
-				<p>Swap Usage: <strong> `free -m | awk '/Swap/ { printf("%3.1f%%", $3/$2*100) }'` from `free -h | grep Swap | awk '{print $2}'` </strong></p>
-              </div>
-            </div>
-          </div>
+
+
+
+
+
+<div class="page-header" ></div>   
+<h4>CPU Statistics</h4>	
 		  
-          <div class="col-lg-4">
-            <div class="bs-component">
-              <div class="alert alert-dismissable alert-warning">
-                 <p> 1 Minute Load: <strong>`/bin/cat /proc/loadavg | /usr/bin/awk '{print $1}' 2>/dev/null` %</strong></p>
-				  <p> 5 Minute Load: <strong>`/bin/cat /proc/loadavg | /usr/bin/awk '{print $2}' 2>/dev/null` %</strong></p>
-				   <p> 15 Minute Load: <strong>`/bin/cat /proc/loadavg | /usr/bin/awk '{print $3}' 2>/dev/null` %</strong></p>
-              	   <p> Total Process: <strong> `ps aux | wc -l` </strong><p>
-				   <p> Total Process: <strong> `ls /etc/rc2.d/ | grep S | wc -l` / `ls /etc/rc2.d/ | grep -v README | wc -l` </strong></p>
-			  </div>
-            </div>
-          </div>
-		  
-          <div class="col-lg-4">
-            <div class="bs-component">
-              <div class="alert alert-dismissable alert-warning">            
-				<p> Apache Web Uniq Visitors: <strong> `echo $uniq 2>/dev/null` </strong></p>
-				<p> Time: <strong> `echo $bper` - `echo $fper 2>/dev/null` </strong></p>
-				 <p> IP : <a href="http://`echo $SERVER_ADDR`" ><strong>`echo $SERVER_ADDR` </strong></a></p>
-				 <p><strong> RX: <span> `echo $eth0_rx 2>/dev/null` </span>&nbsp;&nbsp;|&nbsp;&nbsp; TX: <span> `echo $eth0_tx 2>/dev/null` </strong></p>
-              </div>
-            </div>
-          </div>      		  
-        </div>
-		
-	
-  
+             <div class="bs-component" align="center">
+			<h6 id="progress-stacked"><p class="text-warning"> Idle, User, System, Iowait </p></h6>
+              <div class="progress">
+
+                <div class="progress-bar progress-bar-success" style="width:`iostat | awk 'NR==4' | awk '{ printf $6}'`%"> `iostat | awk 'NR==4' | awk '{ printf $6}'`% Idle </div> Idle
+            </div> 
+
+              <div class="progress">
+<div class="progress-bar progress-bar-info" style="width:`iostat | awk 'NR==4' | awk '{ printf $1}'`%"> `iostat | awk 'NR==4' | awk '{ printf $1}'`% </div> User      
+            </div> 
+
+              <div class="progress">
+<div class="progress-bar progress-bar-warning" style="width:`iostat | awk 'NR==4' | awk '{ printf $3}'`%"> `iostat | awk 'NR==4' | awk '{ printf $3}'`% </div> System    
+            </div> 
+
+              <div class="progress">
+<div class="progress-bar progress-bar-danger" style="width:`iostat | awk 'NR==4' | awk '{ printf $4}'`%"> `iostat | awk 'NR==4' | awk '{ printf $4}'`% </div> Iowait    
+            </div> 
+
+
+
+
+
 	
 <div class="page-header"></div>   
-<h3>Ram Memory</h3>	
-		  
+<h4>RAM Memory</h4>
+		   
              <div class="bs-component" align="center">
 			<h6 id="progress-stacked"><p class="text-warning"> RAM BAR - Used, Shared, Buffered, Cached, Free </p></h6>
               <div class="progress">
+
                 <div class="progress-bar progress-bar-success" style="width:`free -m | awk '/Mem/ { printf("%3.1f%%", $3/$2*100) }'`"> `free -m | awk '/Mem/ { printf("%3.1f%%", $3/$2*100) }'` </div>
                 <div class="progress-bar progress-bar-info" style="width:`free -m | awk '/Mem/ { printf("%3.1f%%", $5/$2*100) }'`"> `free -m | awk '/Mem/ { printf("%3.1f%%", $5/$2*100) }'` </div>
                 <div class="progress-bar progress-bar-warning" style="width:`free -m | awk '/Mem/ { printf("%3.1f%%", $6/$2*100) }'`"> `free -m | awk '/Mem/ { printf("%3.1f%%", $6/$2*100) }'` </div>
                 <div class="progress-bar progress-bar-danger" style="width: `free -m | awk '/Mem/ { printf("%3.1f%%", $7/$2*100) }'`"> `free -m | awk '/Mem/ { printf("%3.1f%%", $7/$2*100) }'` </div>				
-             `free -m | awk '/Mem/ { printf("%3.1f%%", $4/$2*100) }'` / `free -m | awk '/Mem/ { print $2 }'`
+             `free -m | awk '/Mem/ { printf("%3.1f%%", $4/$2*100) }'` / `free -h | awk '/Mem/ { print $2 }'`
 			  </div>
+   
+
+             <div class="bs-component" align="center">
+			<h6 id="progress-stacked"><p class="text-warning"> RAM Bars </p></h6>
+              <div class="progress">
+                <div class="progress-bar progress-bar-info" style="width:`echo $all1%`"> `echo $all1%` </div>  Free: `free -h | grep "buffers/cache" | awk '{print $4}'` / `free -h | awk '/Mem/ { print $2 }'`				    
+			  </div>
+
+              <div class="progress">
+                <div class="progress-bar progress-bar-success" style="width:`echo $all%`"> `echo $all%` </div>  Used: `free -h | grep "buffers/cache" | awk '{print $3}'` / `free -h | awk '/Mem/ { print $2 }'`				    
+			  </div>
+
+              <div class="progress">
+                <div class="progress-bar progress-bar-info" style="width:`free -m | awk '/Mem/ { printf("%3.1f%%", $5/$2*100) }'`"> `free -m | awk '/Mem/ { printf("%3.1f%%", $5/$2*100) }'` </div>  Shared: `free -h | awk '/Mem/ { print $5 }'` / `free -h | awk '/Mem/ { print $2 }'`				    
+			  </div>
+
+              <div class="progress">
+                <div class="progress-bar progress-bar-warning" style="width:`free -m | awk '/Mem/ { printf("%3.1f%%", $6/$2*100) }'`"> `free -m | awk '/Mem/ { printf("%3.1f%%", $6/$2*100) }'` </div>  Bufferd: `free -h | awk '/Mem/ { print $6 }'` / `free -h | awk '/Mem/ { print $2 }'`				    
+			  </div>
+              <div class="progress">
+                <div class="progress-bar progress-bar-danger" style="width:`free -m | awk '/Mem/ { printf("%3.1f%%", $7/$2*100) }'`"> `free -m | awk '/Mem/ { printf("%3.1f%%", $7/$2*100) }'` </div>  Cached: `free -h | awk '/Mem/ { print $7 }'` / `free -h | awk '/Mem/ { print $2 }'`				    
+			  </div>
+         </div> 
+
+
+
+
+
+
+<div class="page-header"></div>   
+<h4>System Load</h4>	
+	  
+             <div class="bs-component" align="center">
+			<h6 id="progress-stacked"><p class="text-warning"> 5min 10 min 15 min </p></h6>
+              <div class="progress">
+                <div class="progress-bar progress-bar-success" style="width:`/bin/cat /proc/loadavg | /usr/bin/awk '{print $1}'`%"> `/bin/cat /proc/loadavg | /usr/bin/awk '{print $1}'`% </div> 5 Min
             </div> 
-			
-            <div class="panel panel-warning">
-                <div class="panel-heading">
-                  <h3 class="panel-title">RAM - Raw Format</h3>
-                </div>
-                <pre>`free -h` </pre>
-              </div>
-         
+
+              <div class="progress">
+<div class="progress-bar progress-bar-info" style="width:`/bin/cat /proc/loadavg | /usr/bin/awk '{print $2}'`%"> `/bin/cat /proc/loadavg | /usr/bin/awk '{print $2}'`% </div> 10 Min      
+            </div> 
+
+              <div class="progress">
+<div class="progress-bar progress-bar-warning" style="width:`/bin/cat /proc/loadavg | /usr/bin/awk '{print $3}'`%"> `/bin/cat /proc/loadavg | /usr/bin/awk '{print $3}'`% </div> 15 Min    
+            </div> 
+
+
+
+        
 <div class="page-header"></div>  
-<h3>Disk Space</h3>      
+<h4>Disk Space</h4>      
 
 EOF
      
 
-for i in ` mount | grep "^/" | awk '{print $3}'`; do
+for i in `mount | grep "^/" | awk '{print $1}'`; do
 
 echo "<div class="bs-component" align="center"><h6 id="progress-stacked"><p class="text-warning"> `df -h $i  | awk '{print $1}' | awk 'NR==2'` mounted on `df -h $i  | awk '{print $6}' | awk 'NR==2'` </p></h6>"
 echo "<div class="progress">"
@@ -158,100 +174,147 @@ echo -e "<div class="progress-bar progress-bar-danger" style="width:"$pr"">$pr</
 echo "</div>  </div>"         		
 done	 
 
+
+
+		lsblk -l | grep xvda 2>&1 > /dev/null
+				ans=`echo $?`
+
+						if [ $ans == 1 ]; then
+
 cat << EOF
-              <div class="panel panel-warning">
-                <div class="panel-heading">
-                  <h3 class="panel-title">Disk Space - Raw Format</h3>
-                </div>
-                <pre>`df -h` </pre>
-              </div>
-	
-             <div class="panel panel-warning">
-                <div class="panel-heading">
-                  <h3 class="panel-title">I/O Stat - Raw Format</h3>
-                </div>
-                <pre> `iostat -hm 2>/dev/null` </pre>
-              </div>
-	
+<div class="page-header"></div>  
+<h4>Disk Read</h4>      
+
+EOF
+     
+
+for j in `mount | grep "^/" | awk '{print $1}' | cut -d/ -f3`; do
+mounted=`cat /etc/mtab | grep $j | awk '{print $2}'`
+echo "<div class="bs-component" align="center"><h6 id="progress-stacked"><p class="text-warning"> `echo $j` mounted on $mounted </p></h6>"
+echo "<div class="progress">"
+
+pr=`iostat -m $j | grep $j | awk '{print $3}'`
+
+echo -e "<div class="progress-bar progress-bar-warning" style="width:"$pr%""> $pr Mb/s </div> `iostat -m $j | grep $j | awk '{print $5}'`
+Mb read "			
+echo "</div>  </div>"         		
+done		 
+
+cat << EOF
+
+ 
+
+<div class="page-header"></div>  
+<h4>Disk Write</h4>      
+
+EOF
+     
+
+for j in `mount | grep "^/" | awk '{print $1}' | cut -d/ -f3`; do
+mounted=`cat /etc/mtab | grep $j | awk '{print $2}'`
+echo "<div class="bs-component" align="center"><h6 id="progress-stacked"><p class="text-warning"> `echo $j` mounted on $mounted </p></h6>"
+echo "<div class="progress">"
+
+pr=`iostat -m $j | grep $j | awk '{print $4}'`
+
+echo -e "<div class="progress-bar progress-bar-warning" style="width:"$pr%""> $pr Mb/s </div> `iostat -m $j | grep $j | awk '{print $6}'`
+Mb read "			
+echo "</div>  </div>"         		
+done		 
+	 
+						else
+
+cat << EOF
+<div class="page-header"></div>  
+<h4>Disk Read</h4>      
+
+EOF
+
+
+for j in `lsblk -l | awk '{print $7,$1}' | grep -v NAME | grep -v MOUNTPOINT | sed '/^\ /d' | awk '{print $2}'`; do
+
+mount=`lsblk /dev/$j | awk '{print $7}' | grep -v NAME | grep -v MOUNTPOINT`
+echo "<div class="bs-component" align="center"><h6 id="progress-stacked"><p class="text-warning"> `echo $j` mounted on $mount </p></h6>"
+echo "<div class="progress">"
+
+pr=`iostat $j | grep $j | awk '{print $3}'`
+
+echo -e "<div class="progress-bar progress-bar-warning" style="width:"$pr%""> $pr Kb/s </div> `iostat -m $j | grep $j | awk '{print $5}'`
+Mb read "
+echo "</div>  </div>"
+done             
+     
+
+cat << EOF
+<div class="page-header"></div>  
+<h4>Disk Write</h4>      
+
+EOF
+
+
+for j in `lsblk | awk '{print $1}' | grep -v NAME`; do
+mount=`lsblk /dev/$j | awk '{print $7}' | grep -v NAME | grep -v MOUNTPOINT` 
+echo "<div class="bs-component" align="center"><h6 id="progress-stacked"><p class="text-warning"> `echo $j` mounted on $mount</p></h6>"
+echo "<div class="progress">"
+
+pr=`iostat $j | grep $j | awk '{print $4}'`
+
+echo -e "<div class="progress-bar progress-bar-warning" style="width:"$pr%""> $pr Kb/s </div>`iostat -m $j | grep $j | awk '{print $6}'`
+Mb write "
+echo "</div>  </div>"
+done             
+ 
+
+					fi
+
+cat << EOF
+
+
+
+
+ <div class="page-header"></div>  
+<h4>Processes</h4>      
+
+EOF
+     
+users=`ps aux | grep -v USER | awk '{print $1}' | sort | uniq`
+total_process=`ps aux | wc -l`
+
+get_process() {
+for i in $users; do
+echo "<div class="bs-component" align="center"><h6 id="progress-stacked"><p class="text-warning"> `echo $i | awk '{print $1}'` </p></h6>"
+echo "<div class="progress">"
+user_process=`ps aux | grep $i | wc -l`
+
+
+a=`echo $total_process`
+b=`echo $user_process`
+
+percent=`echo "$b*100/$a" | bc`
+
+echo -e "<div class="progress-bar progress-bar-warning" style="width:"$percent%""> $percent% </div> $b from $a
+ "		
+echo "</div>  </div>"         		
+done		 
+
+}
+
+get_process
+
+
+cat << EOF
+  	  			  
 <div class="page-header"></div>   
-<h3>Network</h3>
-
-             <div class="panel panel-warning">
-                <div class="panel-heading">
-                  <h3 class="panel-title">Servers - Raw Format</h3>
-                </div>
-                <pre>`netstat -tuln`  </pre>
-              </div>
-			  
-             <div class="panel panel-warning">
-                <div class="panel-heading">
-                  <h3 class="panel-title">Traffic - Raw Format</h3>
-                </div>
-                <pre>`vnstat -i eth0` </pre>
-              </div>
-
-             <div class="panel panel-warning">
-                <div class="panel-heading">
-                  <h3 class="panel-title">Open Sockets</h3>
-                </div>
-                <pre>`netstat -tun`  </pre>
-              </div>
-			  
-			  <div class="panel panel-warning">
-                <div class="panel-heading">
-                  <h3 class="panel-title">Interfaces - Raw</h3>
-                </div>
-                <pre>`/sbin/ifconfig` </pre>
-              </div>
-			  			  
-<div class="page-header"></div>   
-<h3>Users</h3>
-
-             <div class="panel panel-warning">
-                <div class="panel-heading">
-                  <h3 class="panel-title">Online Users</h3>
-                </div>
-                <pre> `w -s` </pre>
-              </div>
-			  
-			  <div class="panel panel-warning">
-                <div class="panel-heading">
-                  <h3 class="panel-title">Last Logins - Raw</h3>
-                </div>
-                <pre>`last -i` </pre>
-              </div>
-			  
-<div class="page-header"></div>   
-<h3>Processes</h3>
-
-			<div class="panel panel-warning">
-                <div class="panel-heading">
-                  <h3 class="panel-title">Boot Services - Raw Format</h3>
-                </div>
-				<span id="os-hostname"> <pre> `ls /etc/rc2.d/ | grep S | cut -d"S" -f2 | cut -b 3-20 | sort` </pre></span>			
-            </div>
-			
-             <div class="panel panel-warning">
-                <div class="panel-heading">
-                  <h3 class="panel-title">All process</h3>
-                </div>
-                <pre> `ps aux` </pre>
-              </div>
 
       <footer>
         <div class="row">
           <div class="col-lg-12">    
-            <p>Based on <a href="http://getbootstrap.com" rel="nofollow">Bootstrap</a>. Icons from <a href="http://fortawesome.github.io/Font-Awesome/" rel="nofollow">Font Awesome</a>. Web fonts from <a href="http://www.google.com/webfonts" rel="nofollow">Google</a>.</p>
-            <a href="http://builtwithbootstrap.com/" target="_blank">Built With Bootstrap</a>
-            <a href="https://wrapbootstrap.com/?ref=bsw" target="_blank">WrapBootstrap</a>
+            <p>System: `uname -a`.  Made by <a href="https://github.com/caezsar" rel="nofollow">caezsar</a> </p> 
 		</div>
         </div>
 
       </footer>
     </div>
-
-    <script src="https://code.jquery.com/jquery-1.10.2.min.js"></script>
- 
   </body>
 </html>
 
